@@ -1,7 +1,7 @@
 ## Building and Running the [Dockerfile](./Dockerfile)
 ```sh
 docker build -t outlook-container .
-docker run -it outlook-container powershell
+docker run -d -p 3389:3389 outlook-container
 ```
 
 ## Links

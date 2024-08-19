@@ -2,32 +2,25 @@
 # FROM mcr.microsoft.com/windows:ltsc2019
 FROM mcr.microsoft.com/windows/servercore:ltsc2019
 
-# Install necessary tools using DISM
-RUN dism.exe /online /enable-feature /all /featurename:NetFx3
-
-# Download and install Office Deployment Tool
-ADD https://download.microsoft.com/download/2/9/8/2988E6A6-0E6A-4E7E-8A3E-1D3E8D3E8D3E/OfficeDeploymentTool.exe C:\\OfficeDeploymentTool.exe
-RUN C:\\OfficeDeploymentTool.exe /quiet /extract:C:\\Office
-
-# Add configuration files for Office installation
-COPY download-config.xml C:\\Office\\download-config.xml
-COPY install-config.xml C:\\Office\\install-config.xml
-
-# Install Office including Outlook
-RUN C:\\Office\\setup.exe /configure C:\\Office\\install-config.xml
-
-
-# Install necessary tools
+# Install Chocolatey package manager
 RUN powershell -Command \
-    Install-WindowsFeature -Name Web-Server
+    Set-ExecutionPolicy Bypass -Scope Process -Force; \
+    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; \
+    iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
 
-# Download and install Office Deployment Tool
-ADD https://download.microsoft.com/download/2/9/8/2988E6A6-0E6A-4E7E-8A3E-1D3E8D3E8D3E/OfficeDeploymentTool.exe C:\\OfficeDeploymentTool.exe
-RUN C:\\OfficeDeploymentTool.exe /quiet /extract:C:\\Office
+# Install Office 365 (includes Outlook)
+RUN choco install office365business -y
 
-# Add configuration files for Office installation
-COPY download-config.xml C:\\Office\\download-config.xml
-COPY install-config.xml C:\\Office\\install-config.xml
+# Enable RDP
+RUN powershell -Command \
+    Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0; \
+    Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
 
-# Install Office including Outlook
-RUN C:\\Office\\setup.exe /configure C:\\Office\\install-config.xml
+# Set a password for the Administrator account
+RUN net user Administrator /active:yes MySecurePassword123!
+
+# Expose RDP port
+EXPOSE 3389
+
+# Start RDP server
+CMD ["cmd", "/c", "start", "C:\\Windows\\System32\\mstsc.exe"]
